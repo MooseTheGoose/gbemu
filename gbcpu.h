@@ -9,7 +9,9 @@
  * a macro to adapt to big endian systems.
  */
 
-typedef struct RFile
+struct GBMEM;
+
+typedef struct GBCPU 
 {
     union
     {
@@ -47,20 +49,42 @@ typedef struct RFile
             uint8_t A;
         };
     };
-}
-RFile;
 
-typedef union Opcode
-{
-    uint8_t code;
-    struct
-    {
-        uint8_t main : 2;
-        uint8_t f1   : 3;
-        uint8_t f2   : 3;
-    };
+    uint16_t PC;
+    uint16_t SP;
+
+    uint32_t TICKS;
+    struct GBMEM *MEMORY;
 }
-Opcode;
+GBCPU;
+
+/*
+ *  Memory convenience structure
+ */
+typedef struct GBMEM
+{
+    struct GBCART 
+    {
+        uint8_t *ROM;
+        uint8_t *EXRAM;
+
+        uint8_t (*MBC_READ)(struct GBCART *mem, uint16_t addr);
+        void (*MBC_WRITE)(struct GBCART *mem, uint16_t addr, 
+                          uint8_t byte);
+        void *MBC_DATA;
+    }
+    CARTRIDGE;
+
+    uint8_t VRAM[2][0x2000];
+    uint8_t WRAM[8][0x1000];
+    uint8_t ECHO[0x1DFF];
+    uint8_t OAM[0xA0];
+    uint8_t NO_USE[0x60];
+    uint8_t IO[0x80];
+    uint8_t HRAM[0x7F];
+    uint8_t IE;
+}
+GBMEM;
 
 #define CC_C 0x10
 #define CC_Z 0x80
