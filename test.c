@@ -1,4 +1,4 @@
-#include "gbcpu.h"
+#include "gbsys.h"
 
 int main()
 {

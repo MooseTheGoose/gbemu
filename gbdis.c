@@ -5,11 +5,22 @@
 
 #define ARRLEN(arr) (sizeof(arr) / sizeof(*(arr)))
 
+typedef struct DisInfo
+{
+    char mem[0x10000];
+    uint16_t ptr;
+} DisInfo;
+
 const char *rnames[8] = 
 { "B", "C", "D", "E", "H", "L", "(HL)", "A" };
 
 const char *pnames[4] = 
 { "BC", "DE", "HL", "SP" };
+
+const char *ccnames[4] = { "NZ", "Z", "NC", "C" };
+
+const char *illcodes = 
+"\xD4\xDB\xDD\xE4\xE5\xEB\xEC\xED\xF5\xFC\xFD";
 
 void DisExtInst(char *buffer, unsigned char code)
 {
@@ -20,8 +31,8 @@ void DisExtInst(char *buffer, unsigned char code)
 
         sprintf(buffer
                 "%s %d, %s", 
-                bit_nmemonics[code - 0x40 >> 6 & 3],
-                code >> 3 & 7,
+                bit_nmemonics[((code - 0x40) >> 6) & 3],
+                (code >> 3) & 7,
                 rnames[code & 7]);
     }
     else
@@ -32,13 +43,12 @@ void DisExtInst(char *buffer, unsigned char code)
 
         sprintf(buffer,
                 "%s %s", 
-                 rot_nmemonics[code >> 3 & 7],
+                 rot_nmemonics[(code >> 3) & 7],
                  rnames[code & 7]); 
     }
 }
 
-void DisNormInst(char *buffer, unsigned char *mem,
-                 uint16_t *memptr)
+void DisNormInst(char *buffer, unsigned char *mem, uint16_t addr)
 {
     unsigned char code = mem[(*memptr)++];
 
@@ -55,7 +65,7 @@ void DisNormInst(char *buffer, unsigned char *mem,
             { 
                 sprintf(buffer,
                         "LD %s, %s", 
-                        rnames[code >> 3 & 7],
+                        rnames[(code >> 3) & 7],
                         rnames[code & 7]);
             }
         }
@@ -88,6 +98,14 @@ void DisNormInst(char *buffer, unsigned char *mem,
             { DisExtInst(buffer, mem[(*memptr)++]); }
             else if((code & 0xC7) == 0xC7)
             { sprintf(buffer, "RST %02XH", code & 0x38); } 
+            else if((code & 0xF7) == 0xC0)
+            { sprintf(buffer, "RET %s", (code >> 3) & 0x7); }
+            else if(code == 
         }
     }
+}
+
+int main()
+{
+    return 0;
 }
