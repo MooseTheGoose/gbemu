@@ -78,7 +78,7 @@ void GBSysWriteByte(GBSYS *SYSTEM, uint16_t addr, uint8_t code)
 
 void GBSysExecNextInst(GBSYS *SYSTEM)
 {
-    uint8_t code = SYSTEM->MBC_READ(SYSTEM, SYSTEM->PC++);
+    uint8_t code = GBSysReadByte(SYSTEM, SYSTEM->PC++);
 
     switch(code & 0xC0)
     {
