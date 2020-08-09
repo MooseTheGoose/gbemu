@@ -76,6 +76,90 @@ void GBSysWriteByte(GBSYS *SYSTEM, uint16_t addr, uint8_t code)
     SYSTEM->BUS_WRITE = code;
 }
 
+uint8_t GBSysReadReg(GBSYS *SYSTEM, int index)
+{
+    uint8_t reg;
+
+    switch(index)
+    {
+        case 0:
+        { reg = SYSTEM->B; break; }
+        case 1:
+        { reg = SYSTEM->C; break; }
+        case 2:
+        { reg = SYSTEM->D; break; }
+        case 3:
+        { reg = SYSTEM->E; break; }
+        case 4:
+        { reg = SYSTEM->H; break; }
+        case 5:
+        { reg = SYSTEM->L; break; }
+        case 6:
+        { reg = GBSysReadByte(SYSTEM, SYSTEM->HL); break; }
+        case 7:
+        { reg = SYSTEM->A; break; }
+    }
+
+    return reg;
+}
+
+void GBSysWriteReg(GBSYS *SYSTEM, int index, uint8_t byte)
+{
+    switch(index)
+    {
+        case 0:
+        { SYSTEM->B = byte; break; }
+        case 1:
+        { SYSTEM->C = byte; break; }
+        case 2:
+        { SYSTEM->D = byte; break; }
+        case 3:
+        { SYSTEM->E = byte; break; }
+        case 4:
+        { SYSTEM->H = byte; break; }
+        case 5:
+        { SYSTEM->L = byte; break; }
+        case 6:
+        { GBSysWriteByte(SYSTEM, SYSTEM->HL, byte); break; }
+        case 7:
+        { SYSTEM->A = byte; break; }
+    }
+}
+
+int GBSysReadPair(GBSYS *SYSTEM, int index)
+{
+    int contents = -1;
+
+    switch(index)
+    {
+        case 0:
+        { contents = SYSTEM->BC; break; }
+        case 1:
+        { contents = SYSTEM->DE; break; }
+        case 2:
+        { contents = SYSTEM->HL; break; }
+        case 3:
+        { contents = SYSTEM->SP; break; }
+    }
+
+    return contents;
+}
+
+void GBSysWritePair(GBSYS *SYSTEM, int index, uint16_t contents)
+{
+    switch(index)
+    {
+        case 0:
+        { SYSTEM->BC = contents; break; }
+        case 1:
+        { SYSTEM->DE = contents; break; }
+        case 2:
+        { SYSTEM->HL = contents; break; }
+        case 3:
+        { SYSTEM->SP = contents; break; }
+    }
+}
+
 void GBSysExecNextInst(GBSYS *SYSTEM)
 {
     uint8_t code = GBSysReadByte(SYSTEM, SYSTEM->PC++);
@@ -84,7 +168,178 @@ void GBSysExecNextInst(GBSYS *SYSTEM)
     {
         case 0x00:
         case 0x40:
+        { 
+            if(code == 0x76)
+            { /* Halt */ }
+            else
+            {
+              uint8_t byte = GBSysReadReg(SYSTEM, code & 0x7);
+              GBSysWriteReg(SYSTEM, (code >> 3) & 0x7, byte);
+            }
+            break;
+        }
         case 0x80:
+        {
+            /* TODO: Move arithmetic functions to separate
+                     functions, since they repeat for
+                     immediate operands. */
+
+            switch((code >> 3) & 0x7)
+            {
+                case 0:
+                {
+                    uint8_t op1 = SYSTEM->A,
+                            op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+                    uint8_t result = op1 + op2;
+                    uint8_t newflags = 0;
+
+                    if(result < op1) 
+                    { newflags |= CC_C; }
+                    if((result & 0xF) < (op1 & 0xF)) 
+                    { newflags |= CC_H; }
+                    if(!result) 
+                    { newflags |= CC_Z; }
+                    
+                    SYSTEM->F = newflags;                   
+                    SYSTEM->A = result;                  
+ 
+                    break;
+                }
+                case 1:
+                { 
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 + op2;
+		    uint8_t newflags = 0;
+
+                    if(SYSTEM->F & CC_C) { result++; }
+                    
+                    
+                    if(result < op1) 
+                    { newflags |= CC_C; }
+                    if((result & 0xF) < (op1 & 0xF)) 
+                    { newflags |= CC_H; }
+                    if(!result) 
+                    { newflags |= CC_Z; }
+                    
+                    SYSTEM->F = newflags;                   
+                    SYSTEM->A = result;                  
+
+                    break;
+                }
+                case 2:
+                {
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 - op2;
+		    uint8_t newflags = CC_N;
+                    
+                    if(result > op1) 
+                    { newflags |= CC_C; }
+                    if((result & 0xF) > (op1 & 0xF)) 
+                    { newflags |= CC_H; }
+                    if(!result) 
+                    { newflags |= CC_Z; }
+                    
+                    SYSTEM->F = newflags; 
+                    SYSTEM->A = result;                  
+
+                    break;
+                }
+                case 3:
+                { 
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 - op2;
+		    uint8_t newflags = CC_N;
+
+                    if(SYSTEM->F & CC_C) { result--; }
+                    
+                    if(result > op1) 
+                    { newflags |= CC_C; }
+                    if((result & 0xF) > (op1 & 0xF)) 
+                    { newflags |= CC_H; }
+                    if(!result) 
+                    { newflags |= CC_Z; }
+
+                    SYSTEM->F = newflags;
+                    SYSTEM->A = result;                  
+                    
+                    break;
+                }
+                case 4:
+                { 
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 & op2;
+		    uint8_t newflags = CC_H;
+
+                    if(!result) 
+                    { newflags |= CC_Z; }
+ 
+                    SYSTEM->F = newflags;
+                    SYSTEM->A = result;
+
+                    break;
+                }
+                case 5:
+                { 
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 ^ op2;
+		    uint8_t newflags = 0;
+
+                    if(!result) 
+                    { newflags |= CC_Z; }
+
+                    SYSTEM->F = newflags;
+                    SYSTEM->A = result;
+
+                    break;
+                }
+                case 6:
+                { 
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 | op2;
+		    uint8_t newflags = 0;
+
+                    if(!result) 
+                    { newflags |= CC_Z; }
+
+                    SYSTEM->F = newflags;
+                    SYSTEM->A = result;
+
+                    break;
+                }
+                case 7:
+                { 
+		    uint8_t op1 = SYSTEM->A,
+			    op2 = GBSysReadReg(SYSTEM, code & 0x7);
+
+		    uint8_t result = op1 - op2;
+		    uint8_t newflags = CC_N;
+                    
+                    if(result > op1) 
+                    { newflags |= CC_C; }
+                    if((result & 0xF) > (op1 & 0xF)) 
+                    { newflags |= CC_H; }
+                    if(!result) 
+                    { newflags |= CC_Z; }
+
+                    SYSTEM->F = newflags;
+
+                    break;
+                }
+            }
+        }
         case 0xC0:
             break;
     }

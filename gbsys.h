@@ -82,9 +82,18 @@ GBSYS;
 #define SYS_HALT 0x1
 #define SYS_IME  0x2
 
+/*
+ *  TODO: Change return types of read functions
+ *        to be int to allow for error codes. 
+ */
+
 void GBSysUpdate(GBSYS *SYSTEM);
 uint8_t GBSysReadByte(GBSYS *SYSTEM, uint16_t addr);
 void GBSysWriteByte(GBSYS *SYSTEM, uint16_t addr, uint8_t code);
+uint8_t GBSysReadReg(GBSYS *SYSTEM, int index);
+void GBSysWriteReg(GBSYS *SYSTEM, int index, uint8_t byte);
+int GBSysReadPair(GBSYS *SYSTEM, int index);
+void GBSysWritePair(GBSYS *SYSTEM, int index, uint16_t contents);
 
 uint8_t NoMBCRead(GBSYS *SYSTEM, uint16_t addr);
 void    NoMBCWrite(GBSYS *SYSTEM, uint16_t addr, uint8_t code);
